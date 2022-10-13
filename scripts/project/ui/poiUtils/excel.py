@@ -14,6 +14,8 @@ from org.apache.poi.ss.util 		import RegionUtil
 from org.apache.poi.xssf.usermodel	import XSSFColor
 from org.apache.poi.xssf.usermodel 	import XSSFWorkbook
 
+import traceback
+
 logger = system.util.getLogger("poiUtils.excel")
 	
 
@@ -187,8 +189,9 @@ def DatasetToXlsx(data, sheetname, filename):
 			dateCellStyle = workbook.createCellStyle()
 			dateCellStyle.setDataFormat(createHelper.createDataFormat().getFormat("dd-MM-yyyy"))
 			styles['DateCell'] = dateCellStyle
-		except Exception, e:
-			print str(e)
+		except:
+			a = traceback.format_exc()
+			logger.error('DatasetToXlsx.createCellStyles/%s' % a)
 		
 		return styles
 		
@@ -286,8 +289,10 @@ def XlsxToDataset(pathToXlsx):
 			
 			dataset = sheetToDataset(workbook, 0)
 			
-		except Exception, e:
-			system.gui.errorBox(str(e))
+		except:
+			a = traceback.format_exc()
+			logger.error('XlsxToDataset/%s' % a)
+			system.gui.errorBox('Error converting file to dataset\r\n\r\n%s' % a)
 				
 	#	event.source.parent.getComponent('powerTable').data = dataset
 #		print dataset
@@ -406,6 +411,8 @@ def getXlsxColumns(pathToXlsx, headers, sheetNum=0, headerRowNum=0, dataRowNum=1
 							dataset = system.dataset.setValue(dataset, rowIndex-1, colIndex, value)
 		
 		except Exception, e:
+			a = traceback.format_exc()
+			logger.error('getXlsxColumns/%s' % a)
 			system.gui.errorBox(str(e))
 			
 		fileInputStream.close()
@@ -426,8 +433,9 @@ def getSheetIndex(pathToXlsx, sheetName):
 			if sheet != None:
 				index = workbook.getSheetIndex(sheet)
 		except Exception, e:
+			a = traceback.format_exc()
+			logger.error('getSheetIndex/%s' % a)			
 			system.gui.errorBox(str(e))
-			logger.logError()
 			
 		fileInputStream.close()	
 		

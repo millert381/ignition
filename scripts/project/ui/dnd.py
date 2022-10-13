@@ -59,7 +59,7 @@ class DraggableScheduleEntry(DragGestureListener, DragSourceListener):
 			self.dragSource.startDrag(e, DragSource.DefaultCopyDrop, transferable, self)
 		except:
             a = traceback.format_exc()
-			self.logger.error("DraggableScheduleEntry.dragGestureRecognized/Error getting transfer data from component/%s", a)
+			self.logger.error("dragGestureRecognized/Error getting transfer data from component/%s", a)
 			
 #	def dragEnter(self, e):
 #		self.logger.info("shared.utils.dnd.smna.ScheduleEntryDragGestureListener.dragEnter/Drag enter")
@@ -104,5 +104,5 @@ class ScheduleEntryDropListener(DropTargetListener):
 		except Exception, ex:
 			e.rejectDrop()
             a = traceback.format_exc()
-			self.logger.error("shared.utils.smna.dnd.ScheduleEntryDropListener.drop/Drop Error!/%s" % a)
+			self.logger.error("drop/Drop Error!/%s" % a)
 				

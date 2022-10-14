@@ -37,13 +37,26 @@ class GibberishDetector(object):
 			
 		print system.util.jsonEncode( detector2.getResults(), 4 )
 	"""
-	def __init__(self, text):
-		self.text = text
+	def __init__(self, text, minLength=10, minWords=2):
+		self.__text = text
+		self.__minLength = minLength
+		self.__minWords = minWords
 		self.__isEmptyString = False
-		self.__isGibberish = False
+		self.__isGibberish = True
+		
+		self.__chunk_size = 35
+		self.__chunks =  []
+		
+		self__classification = 100.0
+		self.__ucpcp = 0.0
+		self.__vp = 0.0
+		self.__wtcr = 0.0
+		self.__ucpcp_dev = 0.0
+		self.__vp_dev = 0.0
+		self.__wtcr_dev = 0.0
 		
 		self.__classify()
-	
+
 	
 	def isEmptyString(self):
 		return self.__isEmptyString
@@ -51,6 +64,13 @@ class GibberishDetector(object):
 
 	def isGibberish(self):
 		return self.__isGibberish
+
+	
+	def getConfidence(self):
+		if self.__isEmptyString:
+			return 0.0
+		
+		return 100.0 - self.__classification
 
 
 	def getResults(self):
@@ -61,21 +81,22 @@ class GibberishDetector(object):
 			'deviations': {
 				'unique_chars_per_chunk_percentage': self.__ucpcp_dev, 'vowels_percentage': self.__vp_dev, 'word_to_char_ratio': self.__wtcr_dev
 			},
+			'chunk_size': self.__chunk_size,
 			'classification': self.__classification,
 			'isEmptyString': self.__isEmptyString,
 			'isGibberish': self.__isGibberish,
-			'text': self.text
+			'text': self.__text
 		}
 
 
 	def getText(self):
-		return self.text
+		return self.__text
 	
 	
 	def __split_in_chunks(self, chunk_size):
 		chunks = []
-		for i in range(0, len(self.text), chunk_size):
-			chunks.append(self.text[i:i+chunk_size])
+		for i in range(0, len(self.__text), chunk_size):
+			chunks.append(self.__text[i:i+chunk_size])
 		if len(chunks) > 1 and len(chunks[-1]) < 10:
 			chunks[-2] += chunks[-1]
 			chunks.pop(-1)
@@ -84,9 +105,10 @@ class GibberishDetector(object):
 	
 	
 	def __unique_chars_per_chunk_percentage(self, chunk_size):
-		chunks = self.__split_in_chunks(chunk_size)
+		self.__chunks = self.__split_in_chunks(chunk_size)
+						
 		unique_chars_percentages = []
-		for chunk in chunks:
+		for chunk in self.__chunks:
 			total = float(len(chunk))
 			unique = float(len(set(chunk)))
 			unique_chars_percentages.append(unique / total)
@@ -97,7 +119,7 @@ class GibberishDetector(object):
 	def __vowels_percentage(self):
 		vowels = 0.0
 		total = 0.0
-		for c in self.text:
+		for c in self.__text:
 			if not c.isalpha():
 				continue
 			total += 1.0
@@ -111,8 +133,8 @@ class GibberishDetector(object):
 	
 	
 	def __word_to_char_ratio(self):
-		chars = float(len(self.text))
-		words = float(len([x for x in re.split(r"[\W_]", self.text) if x.strip() != ""]))
+		chars = float(len(self.__text))
+		words = float(len([x for x in re.split(r"[\W_]", self.__text) if x.strip() != ""]))
 		return (words / chars) * 100
 	
 	
@@ -126,22 +148,46 @@ class GibberishDetector(object):
 	
 	
 	def __classify(self):
-		if self.text is None or len(self.text) == 0:
+		if self.__text is None or len(self.__text) == 0:
 			self.__isEmptyString = True
 			self.__classification = 0.0
 		else:
 			self.__isEmptyString = False
-				
-			self.__ucpcp = self.__unique_chars_per_chunk_percentage(35)
-			self.__vp = self.__vowels_percentage()
-			self.__wtcr = self.__word_to_char_ratio()
-
-			self.__ucpcp_dev = max(self.__deviation_score(self.__ucpcp, 45, 50), 1.0)
-			self.__vp_dev = max(self.__deviation_score(self.__vp, 35, 45), 1.0)
-			self.__wtcr_dev = max(self.__deviation_score(self.__wtcr, 15, 20), 1.0)
-
-			self.__classification = max((math.log10(self.__ucpcp_dev) + math.log10(self.__vp_dev) + math.log10(self.__wtcr_dev)) / 6 * 100, 1.0)
 			
-			self.__isGibberish = self.__classification >= 50.0
+			if len(self.__text) <= self.__minLength or len(self.__text.split(' ')) < self.__minWords:
+				self.__classification = 100.0
+			else:
+				if len(self.__text) < 35:
+					self.__chunk_size = len(self.__text) / 1
+					
+				self.__ucpcp = self.__unique_chars_per_chunk_percentage(self.__chunk_size)
+				self.__vp = self.__vowels_percentage()
+				self.__wtcr = self.__word_to_char_ratio()
+	
+				ucpcp_min = 45
+				ucpcp_max = 55
+				
+				vp_min = 35
+				vp_max = 45
+				
+				wtcr_min = 15
+				wtcr_max = 20
+				if len(self.__text) < 35:
+					ucpcp_min = 25
+					ucpcp_max = 85
+					
+					vp_min = 25
+					vp_max = 55
+					
+					wtcr_min = 10
+					wtcr_max = 45
+					
+				self.__ucpcp_dev = max(self.__deviation_score(self.__ucpcp, ucpcp_min, ucpcp_max), 1.0)
+				self.__vp_dev = max(self.__deviation_score(self.__vp, vp_min, vp_max), 1.0)
+				self.__wtcr_dev = max(self.__deviation_score(self.__wtcr, wtcr_min, wtcr_max), 1.0)
+	
+				self.__classification = max((math.log10(self.__ucpcp_dev) + math.log10(self.__vp_dev) + math.log10(self.__wtcr_dev)) / 6 * 100, 1.0)
+				
+				self.__isGibberish = self.__classification >= 50.0
 		
 	
